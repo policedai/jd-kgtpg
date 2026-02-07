@@ -15,13 +15,11 @@ import os
 # ==========================================
 # 应用访问密码（本地直接改，部署用Streamlit Secrets）
 APP_PASSWORD = os.getenv("APP_PASSWORD", "123456")
-
 # 飞书配置（部署时在Streamlit Cloud Secrets里设置）
 FEISHU_APP_ID = os.getenv("FEISHU_APP_ID")
 FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET")
 FEISHU_APP_TOKEN = os.getenv("FEISHU_APP_TOKEN")
 FEISHU_TABLE_ID = os.getenv("FEISHU_TABLE_ID")
-
 # 学生姓名选项（统一管理）
 STUDENT_NAMES = ["Dino", "Michael", "Ryan", "Totti"]
 
@@ -29,48 +27,32 @@ def get_client():
     return lark.Client.builder().app_id(FEISHU_APP_ID).app_secret(FEISHU_APP_SECRET).build()
 
 # ==========================================
-# 2. 密码验证（小巧、手机兼容）
+# 2. 密码验证（小巧样式，手机/电脑兼容）
 # ==========================================
 def check_password():
     if "authenticated" in st.session_state and st.session_state.authenticated:
         return True
-
+    # 紧凑密码界面（小尺寸，不突兀）
     st.markdown("""
     <style>
-    .pw-container {
-        max-width: 360px;
-        margin: 2rem auto;
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 8px;
-    }
-    .pw-title {
-        font-size: 1rem;
-        font-weight: 600;
-        text-align: center;
-        margin-bottom: 0.8rem;
-    }
+    .pw-container {max-width: 360px; margin: 1rem auto; padding: 1rem; border: 1px solid #eee; border-radius: 8px;}
+    .pw-title {font-size: 1rem; font-weight: 600; text-align: center; margin-bottom: 0.8rem;}
     </style>
     """, unsafe_allow_html=True)
-
     st.markdown('<div class="pw-container">', unsafe_allow_html=True)
     st.markdown('<div class="pw-title">请输入访问密码</div>', unsafe_allow_html=True)
-
-    pwd = st.text_input(
-        "", type="password", key="pwd_input",
-        placeholder="输入密码", label_visibility="collapsed"
-    )
+    pwd = st.text_input("", type="password", key="pwd_input", placeholder="输入密码", label_visibility="collapsed")
     if st.button("验证", use_container_width=True):
         if pwd == APP_PASSWORD:
             st.session_state.authenticated = True
             st.rerun()
         else:
-            st.error("密码错误")
+            st.error("密码错误，请重试")
     st.markdown('</div>', unsafe_allow_html=True)
     return False
 
 # ==========================================
-# 3. 检索逻辑
+# 3. 检索逻辑（精简版）
 # ==========================================
 def fetch_history(target_names):
     client = get_client()
@@ -104,7 +86,7 @@ def fetch_history(target_names):
                 last_error = str(e)
                 continue
     if not all_results and target_names:
-        st.error(f"查询失败: {last_error}")
+        st.error(f"❌ 查询失败，原因: {last_error}")
     return all_results
 
 # ==========================================
@@ -113,8 +95,7 @@ def fetch_history(target_names):
 def grade_section(s_str, k_str, section_name):
     s_clean = re.sub(r'[^A-Z]', '', s_str.upper())
     k_clean = re.sub(r'[^A-Z]', '', k_str.upper())
-    if not k_clean:
-        return None
+    if not k_clean: return None
     stu_display, key_display, errors = [], [], []
     for i in range(len(k_clean)):
         q_num = i + 1
@@ -122,100 +103,67 @@ def grade_section(s_str, k_str, section_name):
         s_ans = s_clean[i] if i < len(s_clean) else "空"
         stu_display.append(f"[{q_num}]{s_ans}")
         key_display.append(f"[{q_num}]{k_ans}")
-        if s_ans != k_ans:
-            errors.append(str(q_num))
+        if s_ans != k_ans: errors.append(str(q_num))
     status = "✅ 全对" if not errors else f"🔴 第 {', '.join(errors)} 题错误"
-    return {
-        "section": section_name,
-        "stu": " ".join(stu_display),
-        "key": " ".join(key_display),
-        "status": status
-    }
+    return {"section": section_name, "stu": " ".join(stu_display), "key": " ".join(key_display), "status": status}
 
 # ==========================================
-# 5. 主应用（手机/电脑兼容）
+# 5. 主应用（单框可输可选，手机兼容+超紧凑）
 # ==========================================
 def main_app():
-    st.set_page_config(page_title="客观题批改", layout="wide")
-
-    # 超紧凑CSS
+    st.set_page_config(page_title="快速批改诊断版", layout="wide")
+    # 超紧凑全局CSS（所有间距/字体压缩，无冗余）
     st.markdown("""
     <style>
+    /* 全局紧凑 */
     .stApp {margin-top: -1rem; padding-top: 0.5rem;}
     .stTabs [data-baseweb="tab-list"] {gap: 0.5rem; margin-bottom: 0.5rem;}
     .stForm {padding: 0.5rem !important; gap: 0.3rem !important;}
+    .stForm > div {gap: 0.3rem !important;}
     .stDivider {margin: 0.5rem 0 !important;}
-    h3 {font-size: 1rem !important; margin-bottom: 0.3rem !important;}
-    .stTextInput>div>div>input,
-    .stTextArea>div>div>textarea,
-    .stSelectbox>div>div>select {
+    /* 题型标题缩小 */
+    h3 {font-size: 1rem !important; margin-bottom: 0.3rem !important; font-weight: 600;}
+    /* 输入框/下拉框/文本域紧凑 */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div {
         padding: 0.3rem 0.5rem !important;
         font-size: 0.9rem;
+        height: auto !important;
     }
     .stTextArea {height: 60px !important;}
-    .stButton>button {padding: 0.3rem 1rem !important; margin-top: 0.5rem !important;}
-    .report-card {
-        border: 1px solid #ddd;
-        padding: 0.8rem;
-        border-radius: 8px;
-        background: #fff;
-        margin-top: 0.8rem;
-    }
-    .report-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        border-bottom: 1px solid #333;
-        padding-bottom: 0.3rem;
-        margin-bottom: 0.5rem;
-    }
-    .type-head {
-        color: #d9534f;
-        font-weight: bold;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
-        margin-bottom: 0.3rem;
-    }
-    .ans-box {
-        font-family: monospace;
-        font-size: 0.85rem;
-        margin: 0.1rem 0;
-        background: #f9f9f9;
-        padding: 0.3rem;
-        border-radius: 3px;
-    }
+    /* 按钮紧凑 */
+    .stButton > button {padding: 0.3rem 1rem !important; margin-top: 0.5rem !important;}
+    /* 报告卡片超紧凑 */
+    .report-card {border: 1px solid #ddd; padding: 0.8rem; border-radius: 8px; background: #fff; margin-top: 0.8rem;}
+    .report-title {font-size: 1.1rem; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 0.3rem; margin-bottom: 0.5rem;}
+    .type-head {color: #d9534f; font-weight: bold; font-size: 0.9rem; margin-top: 0.5rem; margin-bottom: 0.3rem;}
+    .ans-box {font-family: monospace; font-size: 0.85rem; margin: 0.1rem 0; background: #f9f9f9; padding: 0.3rem; border-radius: 3px;}
     .result-row {display: flex; gap: 0.5rem; margin-bottom: 0.2rem;}
     .result-col {flex: 1;}
     .error-msg {margin-top: 0.2rem; font-size: 0.9rem;}
     </style>
     """, unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["🚀 批改录入", "🔍 历史记录"])
+    tab1, tab2 = st.tabs(["🚀 批改录入", "🔍 检索诊断"])
 
-    # --------------------------
-    # 批改录入（手机兼容版）
-    # --------------------------
+    # 批改录入（核心：单框可选择+可输入，手机端弹输入法）
     with tab1:
         with st.form("input_form"):
             c1, c2 = st.columns(2)
-            with c1:
-                # 方案：始终显示输入框 + 下拉选择回填（手机必弹输入法）
-                st.markdown("**学生姓名***")
-                # 1) 下拉选择（点选回填）
-                selected = st.selectbox(
-                    "选择学生", STUDENT_NAMES,
-                    label_visibility="collapsed",
-                    index=STUDENT_NAMES.index("Ryan")
-                )
-                # 2) 输入框（始终显示，手机必弹输入法）
-                u_name = st.text_input(
-                    "输入姓名", value=selected,
-                    label_visibility="collapsed",
-                    placeholder="可直接输入或从上面选择"
-                )
-            with c2:
-                u_title = st.text_input("作业标题*", value="2501二中")
-
+            # 学生姓名：单框（原生可搜索selectbox，支持输入/选择，手机兼容）
+            u_name = c1.selectbox(
+                "学生姓名*",
+                options=STUDENT_NAMES,
+                index=STUDENT_NAMES.index("Ryan"),
+                # 关键：开启搜索，支持手动输入新姓名，手机点击必弹输入法
+                placeholder="选择/直接输入学生姓名",
+                label_visibility="visible"
+            )
+            u_title = c2.text_input("作业标题*", value="2501二中")
             st.divider()
+
+            # 题型区域（超紧凑）
             sections = ["单项选择", "完形填空", "阅读理解"]
             inputs = {}
             for s in sections:
@@ -227,8 +175,9 @@ def main_app():
                 }
             submitted = st.form_submit_button("批改并同步", use_container_width=True, type="primary")
 
+        # 批改提交逻辑
         if submitted:
-            if not u_name or not u_title:
+            if not u_name or not u_title: 
                 st.error("请填入姓名和标题")
             else:
                 final_report, stu_parts, key_parts, err_parts = [], [], [], []
@@ -256,7 +205,7 @@ def main_app():
                     if client.bitable.v1.app_table_record.create(req).success():
                         st.success("✅ 同步成功！")
                         st.markdown('<div class="report-card">', unsafe_allow_html=True)
-                        st.markdown(f'<div class="report-title">{u_name.upper()}、{u_title} 作答情况</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="report-title">{u_name.upper()}、 {u_title} 作答情况</div>', unsafe_allow_html=True)
                         for item in final_report:
                             st.markdown(f'<div class="type-head">一、{item["section"]}</div>', unsafe_allow_html=True)
                             st.markdown(f'''
@@ -269,25 +218,26 @@ def main_app():
                         st.markdown('</div>', unsafe_allow_html=True)
                         st.balloons()
 
-    # --------------------------
-    # 检索诊断
-    # --------------------------
+    # 检索诊断面板（复用姓名列表，可多选）
     with tab2:
         st.subheader("🔍 检索诊断面板")
-        selected_names = st.multiselect("选择学生（可多选）", STUDENT_NAMES, default=["Ryan"])
-        if st.button("开始查找", use_container_width=True):
+        selected_names = st.multiselect(
+            "选择要检索的学生（可多选）",
+            STUDENT_NAMES,
+            default=["Ryan"]
+        )
+        if st.button("开始深度诊断检索", use_container_width=True):
             if selected_names:
                 history = fetch_history(selected_names)
                 if history:
-                    df = pd.DataFrame(history)
-                    st.table(df)
+                    st.table(pd.DataFrame(history))
                 else:
-                    st.info("未查询到记录")
+                    st.info("ℹ️ 未查询到选中学生的作答记录")
             else:
-                st.warning("请至少选择一个学生")
+                st.warning("⚠️ 请至少选择一个学生姓名")
 
 # ==========================================
-# 入口
+# 程序入口（先验证密码，再进主应用）
 # ==========================================
 if __name__ == "__main__":
     if check_password():
