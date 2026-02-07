@@ -9,15 +9,17 @@ import re
 import pandas as pd
 import json
 import os
+
 # ==========================================
 # 1. 核心配置
 # ==========================================
-
 FEISHU_APP_ID = os.getenv("FEISHU_APP_ID")
 FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET")
 FEISHU_APP_TOKEN = os.getenv("FEISHU_APP_TOKEN")
 FEISHU_TABLE_ID = os.getenv("FEISHU_TABLE_ID")
 
+# 学生姓名选项（可扩展）
+STUDENT_NAMES = ["Dino", "Michael", "Ryan", "Totti"]
 
 def get_client():
     return lark.Client.builder().app_id(FEISHU_APP_ID).app_secret(FEISHU_APP_SECRET).build()
@@ -120,7 +122,8 @@ st.markdown("""
     }
     /* 输入框和文本域高度压缩 */
     .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea {
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > select {
         padding: 0.3rem 0.5rem !important;
         font-size: 0.9rem;
     }
@@ -177,12 +180,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["🚀 批改录入", "🔍 检索诊断"])
+tab1, tab2 = st.tabs(["🚀 批改录入", "🔍 历史查询"])
 
 with tab1:
     with st.form("input_form"):
         c1, c2 = st.columns(2)
-        u_name = c1.text_input("学生姓名*", value="RYAN")
+        # 学生姓名改为可输入+可选择的组合框
+        u_name = c1.selectbox("学生姓名*", STUDENT_NAMES + ["[手动输入新姓名]"], index=STUDENT_NAMES.index("Ryan"))
+        if u_name == "[手动输入新姓名]":
+            u_name = c1.text_input("学生姓名*", value="", key="manual_name")
         u_title = c2.text_input("作业标题*", value="2501二中")
         st.divider()
         sections = ["单项选择", "完形填空", "阅读理解"]
@@ -243,9 +249,8 @@ with tab1:
 
 with tab2:
     st.subheader("🔍 检索诊断面板")
-    # 多选姓名选择器
-    name_options = ["Dino", "Michael", "Ryan", "Totti"]
-    selected_names = st.multiselect("选择要检索的学生（可多选）", name_options, default=["Ryan"])
+    # 多选姓名选择器（复用统一的姓名列表）
+    selected_names = st.multiselect("选择要检索的学生（可多选）", STUDENT_NAMES, default=["Ryan"])
     
     if st.button("开始深度诊断检索", use_container_width=True):
         if selected_names:
