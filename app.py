@@ -8,14 +8,16 @@ from lark_oapi.api.bitable.v1 import *
 import re
 import pandas as pd
 import json
-
+import os
 # ==========================================
 # 1. 核心配置
 # ==========================================
-FEISHU_APP_ID = "你的ID"
-FEISHU_APP_SECRET = "你的密钥"
-FEISHU_APP_TOKEN = "你的TOKEN"
-FEISHU_TABLE_ID = "你的TABLE_ID"
+
+FEISHU_APP_ID = os.getenv("FEISHU_APP_ID")
+FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET")
+FEISHU_APP_TOKEN = os.getenv("FEISHU_APP_TOKEN")
+FEISHU_TABLE_ID = os.getenv("FEISHU_TABLE_ID")
+
 
 def get_client():
     return lark.Client.builder().app_id(FEISHU_APP_ID).app_secret(FEISHU_APP_SECRET).build()
