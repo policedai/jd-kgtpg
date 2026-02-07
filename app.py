@@ -52,7 +52,40 @@ def check_password():
     return False
 
 # ==========================================
-# 3. 检索逻辑（精简版）
+# 3. 快捷姓名标签组件（核心：点击回填到输入框）
+# ==========================================
+def name_tags_input(label, default_value="", key_prefix=""):
+    """
+    带快捷标签的输入框：
+    - 输入框上方显示姓名标签，点击自动填入
+    - 输入框可手动打字，手机端弹输入法
+    """
+    # 初始化session状态，保存输入框值
+    if f"{key_prefix}_name" not in st.session_state:
+        st.session_state[f"{key_prefix}_name"] = default_value
+    
+    # 1. 显示快捷姓名标签（紧凑排列）
+    st.markdown(f"**{label}**")
+    col_tags = st.columns(len(STUDENT_NAMES))
+    for idx, name in enumerate(STUDENT_NAMES):
+        with col_tags[idx]:
+            if st.button(name, use_container_width=True, key=f"{key_prefix}_tag_{name}"):
+                st.session_state[f"{key_prefix}_name"] = name
+    
+    # 2. 显示输入框（手机点击必弹输入法）
+    name_input = st.text_input(
+        "",
+        value=st.session_state[f"{key_prefix}_name"],
+        placeholder="点击上方标签或手动输入姓名",
+        label_visibility="collapsed",
+        key=f"{key_prefix}_input"
+    )
+    # 更新session状态
+    st.session_state[f"{key_prefix}_name"] = name_input
+    return name_input
+
+# ==========================================
+# 4. 检索逻辑（精简版）
 # ==========================================
 def fetch_history(target_names):
     client = get_client()
@@ -90,7 +123,7 @@ def fetch_history(target_names):
     return all_results
 
 # ==========================================
-# 4. 判分逻辑
+# 5. 判分逻辑
 # ==========================================
 def grade_section(s_str, k_str, section_name):
     s_clean = re.sub(r'[^A-Z]', '', s_str.upper())
@@ -108,11 +141,11 @@ def grade_section(s_str, k_str, section_name):
     return {"section": section_name, "stu": " ".join(stu_display), "key": " ".join(key_display), "status": status}
 
 # ==========================================
-# 5. 主应用（单框可输可选，手机兼容+超紧凑）
+# 6. 主应用（标签+输入框，手机兼容+超紧凑）
 # ==========================================
 def main_app():
     st.set_page_config(page_title="快速批改诊断版", layout="wide")
-    # 超紧凑全局CSS（所有间距/字体压缩，无冗余）
+    # 超紧凑全局CSS（所有间距/字体压缩）
     st.markdown("""
     <style>
     /* 全局紧凑 */
@@ -123,17 +156,14 @@ def main_app():
     .stDivider {margin: 0.5rem 0 !important;}
     /* 题型标题缩小 */
     h3 {font-size: 1rem !important; margin-bottom: 0.3rem !important; font-weight: 600;}
-    /* 输入框/下拉框/文本域紧凑 */
+    /* 输入框/按钮/文本域紧凑 */
     .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea,
-    .stSelectbox > div > div {
+    .stTextArea > div > div > textarea {
         padding: 0.3rem 0.5rem !important;
         font-size: 0.9rem;
-        height: auto !important;
     }
     .stTextArea {height: 60px !important;}
-    /* 按钮紧凑 */
-    .stButton > button {padding: 0.3rem 1rem !important; margin-top: 0.5rem !important;}
+    .stButton > button {padding: 0.3rem 1rem !important; margin-top: 0 !important;}
     /* 报告卡片超紧凑 */
     .report-card {border: 1px solid #ddd; padding: 0.8rem; border-radius: 8px; background: #fff; margin-top: 0.8rem;}
     .report-title {font-size: 1.1rem; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 0.3rem; margin-bottom: 0.5rem;}
@@ -142,25 +172,28 @@ def main_app():
     .result-row {display: flex; gap: 0.5rem; margin-bottom: 0.2rem;}
     .result-col {flex: 1;}
     .error-msg {margin-top: 0.2rem; font-size: 0.9rem;}
+    /* 姓名标签按钮紧凑 */
+    [data-testid="stHorizontalBlock"] {gap: 0.2rem !important;}
     </style>
     """, unsafe_allow_html=True)
 
     tab1, tab2 = st.tabs(["🚀 批改录入", "🔍 检索诊断"])
 
-    # 批改录入（核心：单框可选择+可输入，手机端弹输入法）
+    # --------------------------
+    # 批改录入（标签+输入框）
+    # --------------------------
     with tab1:
         with st.form("input_form"):
             c1, c2 = st.columns(2)
-            # 学生姓名：单框（原生可搜索selectbox，支持输入/选择，手机兼容）
-            u_name = c1.selectbox(
-                "学生姓名*",
-                options=STUDENT_NAMES,
-                index=STUDENT_NAMES.index("Ryan"),
-                # 关键：开启搜索，支持手动输入新姓名，手机点击必弹输入法
-                placeholder="选择/直接输入学生姓名",
-                label_visibility="visible"
-            )
-            u_title = c2.text_input("作业标题*", value="2501二中")
+            
+            # 左侧：学生姓名（标签+输入框）
+            with c1:
+                u_name = name_tags_input("学生姓名*", default_value="Ryan", key_prefix="grade")
+            
+            # 右侧：作业标题
+            with c2:
+                u_title = st.text_input("作业标题*", value="2501二中")
+            
             st.divider()
 
             # 题型区域（超紧凑）
@@ -173,6 +206,7 @@ def main_app():
                     "s": cs.text_area("学生作答", key=f"s_{s}", height=60),
                     "k": ck.text_area("标准答案", key=f"k_{s}", height=60)
                 }
+            
             submitted = st.form_submit_button("批改并同步", use_container_width=True, type="primary")
 
         # 批改提交逻辑
@@ -188,6 +222,7 @@ def main_app():
                         stu_parts.append(f"【{s_name}】\n{res['stu']}")
                         key_parts.append(f"【{s_name}】\n{res['key']}")
                         err_parts.append(f"【{s_name}】\n{res['status']}")
+                
                 if final_report:
                     fields = {
                         "姓名": u_name.strip().upper(),
@@ -202,10 +237,12 @@ def main_app():
                         .table_id(FEISHU_TABLE_ID) \
                         .request_body(AppTableRecord.builder().fields(fields).build()) \
                         .build()
+                    
                     if client.bitable.v1.app_table_record.create(req).success():
                         st.success("✅ 同步成功！")
                         st.markdown('<div class="report-card">', unsafe_allow_html=True)
                         st.markdown(f'<div class="report-title">{u_name.upper()}、 {u_title} 作答情况</div>', unsafe_allow_html=True)
+                        
                         for item in final_report:
                             st.markdown(f'<div class="type-head">一、{item["section"]}</div>', unsafe_allow_html=True)
                             st.markdown(f'''
@@ -215,26 +252,60 @@ def main_app():
                             </div>
                             <div class="error-msg">错题记录: {item["status"]}</div>
                             ''', unsafe_allow_html=True)
+                        
                         st.markdown('</div>', unsafe_allow_html=True)
                         st.balloons()
 
-    # 检索诊断面板（复用姓名列表，可多选）
+    # --------------------------
+    # 检索诊断（标签+多选/输入）
+    # --------------------------
     with tab2:
         st.subheader("🔍 检索诊断面板")
-        selected_names = st.multiselect(
-            "选择要检索的学生（可多选）",
-            STUDENT_NAMES,
-            default=["Ryan"]
+        
+        # 检索区：姓名标签+多选+手动输入
+        st.markdown("**选择/输入要检索的学生**")
+        # 1. 快捷标签（点击选中/取消）
+        col_tags = st.columns(len(STUDENT_NAMES))
+        selected_tags = []
+        for idx, name in enumerate(STUDENT_NAMES):
+            with col_tags[idx]:
+                if st.button(name, use_container_width=True, key=f"search_tag_{name}"):
+                    if f"search_selected_{name}" in st.session_state:
+                        del st.session_state[f"search_selected_{name}"]
+                    else:
+                        st.session_state[f"search_selected_{name}"] = True
+        
+        # 2. 收集选中的标签
+        for name in STUDENT_NAMES:
+            if f"search_selected_{name}" in st.session_state:
+                selected_tags.append(name)
+        
+        # 3. 手动输入补充（支持输入不在标签里的姓名）
+        manual_search = st.text_input(
+            "",
+            placeholder="手动输入其他学生姓名（多个用逗号分隔）",
+            label_visibility="collapsed"
         )
+        # 合并选中标签+手动输入
+        all_search_names = selected_tags.copy()
+        if manual_search:
+            # 分割逗号分隔的姓名
+            manual_names = [n.strip() for n in manual_search.split(",") if n.strip()]
+            all_search_names.extend(manual_names)
+        
+        # 去重
+        all_search_names = list(set(all_search_names))
+        
+        # 检索按钮
         if st.button("开始深度诊断检索", use_container_width=True):
-            if selected_names:
-                history = fetch_history(selected_names)
+            if all_search_names:
+                history = fetch_history(all_search_names)
                 if history:
                     st.table(pd.DataFrame(history))
                 else:
-                    st.info("ℹ️ 未查询到选中学生的作答记录")
+                    st.info("ℹ️ 未查询到选中/输入学生的作答记录")
             else:
-                st.warning("⚠️ 请至少选择一个学生姓名")
+                st.warning("⚠️ 请至少选择一个标签或输入一个学生姓名")
 
 # ==========================================
 # 程序入口（先验证密码，再进主应用）
