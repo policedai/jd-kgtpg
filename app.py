@@ -111,7 +111,7 @@ def grade_section(s_str, k_str, section_name):
 # 5. 主应用（单框可输可选，手机兼容+超紧凑）
 # ==========================================
 def main_app():
-    st.set_page_config(page_title="快速批改诊断版", layout="wide")
+    st.set_page_config(page_title="客观题批改", layout="wide")
     # 超紧凑全局CSS（所有间距/字体压缩，无冗余）
     st.markdown("""
     <style>
@@ -145,7 +145,7 @@ def main_app():
     </style>
     """, unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["🚀 批改录入", "🔍 检索诊断"])
+    tab1, tab2 = st.tabs(["🚀 批改录入", "🔍 历史记录"])
 
     # 批改录入（核心：单框可选择+可输入，手机端弹输入法）
     with tab1:
@@ -220,7 +220,7 @@ def main_app():
 
     # 检索诊断面板（复用姓名列表，可多选）
     with tab2:
-        st.subheader("🔍 检索诊断面板")
+        st.subheader("🔍 检索面板")
         selected_names = st.multiselect(
             "选择要检索的学生（可多选）",
             STUDENT_NAMES,
